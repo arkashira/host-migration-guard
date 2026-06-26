@@ -1,56 +1,46 @@
-import argparse
-import dataclasses
 import json
-import time
-from typing import List
+from dataclasses import dataclass
+from typing import Dict, List
 
-@dataclasses.dataclass
-class Deployment:
-    id: str
-    cloud_provider: str
-    status: str
-    uptime: int
+@dataclass
+class DeploymentStatus:
+    cpu_usage: float
+    memory_usage: float
+    network_usage: float
+    health_indicators: Dict[str, bool]
 
-def get_deployments(provider: str = None, status: str = None) -> List[Deployment]:
-    # Simulate a database or API call
-    deployments = [
-        Deployment("1", "AWS", "running", 3600),
-        Deployment("2", "GCP", "running", 7200),
-        Deployment("3", "AWS", "stopped", 0),
-        Deployment("4", "GCP", "running", 3600),
-    ]
-    if provider:
-        deployments = [d for d in deployments if d.cloud_provider == provider]
-    if status:
-        deployments = [d for d in deployments if d.status == status]
-    return deployments
+class HostMigrationGuard:
+    def __init__(self):
+        self.deployments = {}
 
-def print_deployments(deployments: List[Deployment]) -> None:
-    print("ID\tCloud Provider\tStatus\tUptime")
-    for deployment in deployments:
-        print(f"{deployment.id}\t{deployment.cloud_provider}\t{deployment.status}\t{deployment.uptime}")
+    def add_deployment(self, deployment_id: str, status: DeploymentStatus):
+        self.deployments[deployment_id] = status
 
-def watch_deployments(provider: str = None, status: str = None) -> None:
-    while True:
-        deployments = get_deployments(provider, status)
-        print_deployments(deployments)
-        time.sleep(10)
-        print("\033[2J\033[1;1H")  # Clear the screen
+    def get_deployment_status(self, deployment_id: str) -> DeploymentStatus:
+        return self.deployments.get(deployment_id)
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Host Migration Guard CLI")
-    parser.add_argument("--provider", help="Filter by cloud provider")
-    parser.add_argument("--status", help="Filter by deployment status")
-    parser.add_argument("--watch", action="store_true", help="Watch mode")
-    args = parser.parse_args()
-    if args.watch:
-        try:
-            watch_deployments(args.provider, args.status)
-        except KeyboardInterrupt:
-            pass
-    else:
-        deployments = get_deployments(args.provider, args.status)
-        print_deployments(deployments)
+    def get_dashboard_data(self) -> List[Dict]:
+        dashboard_data = []
+        for deployment_id, status in self.deployments.items():
+            dashboard_data.append({
+                "deployment_id": deployment_id,
+                "cpu_usage": status.cpu_usage,
+                "memory_usage": status.memory_usage,
+                "network_usage": status.network_usage,
+                "health_indicators": status.health_indicators
+            })
+        return dashboard_data
 
-if __name__ == "__main__":
-    main()
+    def alert(self, deployment_id: str, message: str):
+        print(f"Alert: {deployment_id} - {message}")
+
+    def collect_metrics(self, deployment_id: str) -> Dict:
+        status = self.get_deployment_status(deployment_id)
+        if status:
+            return {
+                "cpu_usage": status.cpu_usage,
+                "memory_usage": status.memory_usage,
+                "network_usage": status.network_usage
+            }
+        else:
+            return {}
